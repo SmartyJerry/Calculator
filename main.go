@@ -13,13 +13,17 @@ import (
 type Calculator interface {
 	Calculate(a, b int) int
 }
-type Handler interface {
-	Handle(inputs []string, output io.Writer, calculator Calculator) error
+
+type Handler struct {
+	output     io.Writer
+	calculator Calculator
 }
 
-type calcHandler struct{}
+func NewHandler(calc Calculator, output io.Writer) *Handler {
+	return &Handler{output, calc}
+}
 
-func (calc calcHandler) Handle(inputs []string, output io.Writer, calculator Calculator) error {
+func (this *Handler) Handle(inputs []string) error {
 	if len(inputs) != 2 {
 		return errors.New("usage: go run main.go <a> <b>")
 	}
@@ -31,9 +35,9 @@ func (calc calcHandler) Handle(inputs []string, output io.Writer, calculator Cal
 	if err != nil {
 		return errors.New("failed to parse parameter 2")
 	}
-	result := calculator.Calculate(addend1, addend2)
+	result := this.calculator.Calculate(addend1, addend2)
 
-	if _, err := fmt.Fprintln(output, result); err != nil {
+	if _, err := fmt.Fprintln(this.output, result); err != nil {
 		return err
 	}
 	return nil
@@ -44,9 +48,10 @@ func main() {
 		inputs     []string   = os.Args[1:]
 		calculator Calculator = calc.Addition{}
 		output     io.Writer  = os.Stdout
-		handler    Handler    = &calcHandler{}
 	)
-	err := handler.Handle(inputs, output, calculator)
+	handler := NewHandler(calculator, output)
+
+	err := handler.Handle(inputs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
